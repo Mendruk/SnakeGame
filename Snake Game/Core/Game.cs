@@ -1,214 +1,169 @@
-﻿using System.Timers;
-using Timer = System.Timers.Timer;
+﻿namespace Snake_Game;
 
-namespace Snake_Game
+public class Game
 {
-    public class Game
+    public enum Content
     {
-        private Random rnd = new Random();
-        private int _width, _height;
-        private CellContent [,] _grid;
-        private List<int[]> _snake;
-        private SnakeDirection _sneakDirection;
-        private Timer _timer;
+        Empty,
+        Snake,
+        Food,
+        Block
+    }
 
-        public enum CellContent { EMPTY, SNAKE, FOOD, BLOCK };
-        public enum SnakeDirection { STOP, LEFT, RIGHT, UP, DOWN };
+    public enum SnakeDirection
+    {
+        Stop,
+        Left,
+        Right,
+        Up,
+        Down
+    }
 
-        public Game(int width,int height)
+    private readonly int height;
+    private readonly Random rnd = new();
+    private readonly int width;
+    private List<Point> snake;
+    private SnakeDirection snakeDirection;
+
+    public Game(int width, int height)
+    {
+        this.width = width;
+        this.height = height;
+        Grid = new Content[this.width, this.height];
+        Start();
+    }
+
+    private Point snakeHead => snake[snake.Count - 1];
+    private Point snakeTail => snake[0];
+
+    public Content[,] Grid { get; }
+    public int snakeLength => snake.Count;
+
+    private Content CellContent(int x, int y)
+    {
+        x = (x + width) % width;
+        y = (y + height) % height;
+        return Grid[x, y];
+    }
+
+    private void Start()
+    {
+        Array.Clear(Grid, 0, Grid.Length);
+
+        snake = new List<Point> { new(rnd.Next(width), rnd.Next(height)) };
+        Grid[snakeHead.X, snakeHead.Y] = Content.Snake;
+        AddItem(Content.Food);
+        snakeDirection = SnakeDirection.Stop;
+    }
+
+    private Point SnakeNextPoint(SnakeDirection direction)
+    {
+        var nextPoint = new Point(snakeHead.X, snakeHead.Y);
+
+        switch (direction)
         {
-            SetTimer();
+            case SnakeDirection.Left:
+                nextPoint.X -= 1;
+                break;
+            case SnakeDirection.Right:
+                nextPoint.X += 1;
+                break;
+            case SnakeDirection.Up:
+                nextPoint.Y -= 1;
+                break;
+            case SnakeDirection.Down:
+                nextPoint.Y += 1;
+                break;
+        }
 
-            _width = width;
-            _height = height;
-            _grid=new CellContent [_width, _height];
+        nextPoint.X = (nextPoint.X + width) % width;
+        nextPoint.Y = (nextPoint.Y + height) % height;
+        return nextPoint;
+    }
 
+    private void AddItem(Content content)
+    {
+        var freeCells = new List<Point>();
+        for (var i = 0; i < width; i++)
+        for (var j = 0; j < height; j++)
+            if (Grid[i, j] == Content.Empty)
+                freeCells.Add(new Point(i, j));
+
+        if (freeCells.Count > 0)
+        {
+            var randomIndex = rnd.Next(freeCells.Count - 1);
+            Grid[freeCells[randomIndex].X, freeCells[randomIndex].Y] = content;
+        }
+        else
+        {
             Start();
         }
-        private void SnakeUpdate()
-        {
-            int sneakLastElementX = _snake[_snake.Count- 1 ][0];
-            int sneakLastElementY = _snake[_snake.Count - 1][1];
-            for (int i = _snake.Count - 1; i > 0; i--)
-            {
-                _snake[i][0] = _snake[i - 1][0];
-                _snake[i][1] = _snake[i - 1][1];
-            }
-            switch (_sneakDirection)
-            {
-                case SnakeDirection.STOP:
-                    SnakeStep(0, 0);
-                    break;
-                case SnakeDirection.LEFT:
-                    SnakeStep(-1, 0);
-                    break;
-                case SnakeDirection.RIGHT:
-                    SnakeStep(1, 0);
-                    break;
-                case SnakeDirection.UP:
-                    SnakeStep(0, -1);
-                    break;
-                case SnakeDirection.DOWN:
-                    SnakeStep(0, +1);
-                    break;
-                default:
-                    break;
-            }
+    }
 
-            //
-            if (_snake[0][0] > _width-1)
-            {
-                _snake[0][0] = 0;
-            }
-            else if (_snake[0][0] < 0)
-            {
-                _snake[0][0] = _width - 1;
-            }
+    private void ShowFailMessage()
+    {
+        var result = MessageBox.Show("Game Over! Restart?", "Game Over", MessageBoxButtons.YesNo);
+        if (result == DialogResult.Yes) Start();
+        if (result == DialogResult.No) ShowFailMessage();
+    }
 
-            if (_snake[0][1] > _height-1)
-            {
-                _snake[0][1] = 0;
-            }
-            else if (_snake[0][1] <0)
-            {
-                _snake[0][1] = _height - 1;
-            }
-            //
+    public void Update()
+    {
+        var snakeNextPoint = SnakeNextPoint(snakeDirection);
 
-            switch (_grid[_snake[0][0], _snake[0][1]])
-            {
-                case CellContent.FOOD:
-                    _snake.Add(new int[] { sneakLastElementX, sneakLastElementY });
-                    AddItem(CellContent.FOOD);
-                    AddItem(CellContent.BLOCK);
-                    break;
-                case CellContent.SNAKE:
-                    if (_sneakDirection != SnakeDirection.STOP)
-                        FailMessage();
-                    break;
-                case CellContent.BLOCK:
-                    FailMessage();
-                    break;
-                default:
-                    _grid[sneakLastElementX, sneakLastElementY] = CellContent.EMPTY;
-                    break;
-            }
-
-            _grid[_snake[0][0], _snake[0][1]] = CellContent.SNAKE;
-        }
-        private void SnakeStep(int delataX,int delataY)
+        switch (CellContent(snakeNextPoint.X, snakeNextPoint.Y))
         {
-            _snake[0][0]+=delataX;
-            _snake[0][1] += delataY;
-        }
-        private void AddItem(CellContent content)
-        {
-            int randomX = rnd.Next(_height);
-            int randomY = rnd.Next(_width);
-            if(_grid[randomX, randomY] == CellContent.EMPTY)
-            {
-            _grid[randomX, randomY] = content;
-
-            }
-            else
-            {
-                AddItem(content);
-            }
-        }
-        private void SetTimer()
-        {
-            _timer = new Timer(100);
-            _timer.Elapsed += Update;
-            _timer.AutoReset = true;
-            _timer.Enabled = true;
-        }
-        private void Start()
-        {
-            for (int i = 0; i < _height; i++)
-            {
-                for (int j = 0; j < _width; j++)
+            case Content.Food:
+                snake.Add(snakeNextPoint);
+                AddItem(Content.Food);
+                AddItem(Content.Block);
+                break;
+            case Content.Snake:
+                if (snakeDirection != SnakeDirection.Stop)
                 {
-                    _grid[j, i] = CellContent.EMPTY;
+                    snakeDirection = SnakeDirection.Stop;
+                    ShowFailMessage();
                 }
-            }
 
-            _snake = new List<int[]> { new int[] { rnd.Next(_width), rnd.Next(_height) } };
-            _grid[_snake[0][0], _snake[0][1]] = CellContent.SNAKE;
+                break;
+            case Content.Block:
+                if (snakeDirection != SnakeDirection.Stop)
+                {
+                    snakeDirection = SnakeDirection.Stop;
+                    ShowFailMessage();
+                }
 
-            AddItem(CellContent.FOOD);
-            _timer.Start();
-            _sneakDirection = SnakeDirection.STOP;
-        }
-        private void FailMessage()
-        {
-            _timer.Stop();
-            DialogResult result = MessageBox.Show("Вы проиграли. Начать с начала?", "Game Over", MessageBoxButtons.YesNo);
-            if (result == DialogResult.Yes)
-            {
-                Start();
-            }
-            if (result == DialogResult.No)
-            {
-                FailMessage();
-            }
-        }
-        private void Update(Object sourse, ElapsedEventArgs e)
-        {
-            SnakeUpdate();
-        }
-        private CellContent GetCellContent(int x,int y)
-        {
-            if (x > _width-1)
-                x = 0;
-            if (x < 0)
-                x = _width-1;
-            if (y > _height-1)
-                y = 0;
-            if (y < 0)
-                y = _height-1;
-            return _grid[x, y];
+                break;
+            default:
+                snake.Add(snakeNextPoint);
+                Grid[snakeTail.X, snakeTail.Y] = Content.Empty;
+                snake.RemoveAt(0);
+                break;
         }
 
-        public CellContent[,] GetGrid()
-        {
-            return _grid;
-        }
-        public int GetSnakeCount()
-        {
-            return _snake.Count;
-        }
-        public void Input(KeyEventArgs e)
-        {
-            switch (e.KeyCode)
-            {
-                case Keys.D:
-                    if (GetCellContent(_snake[0][0]+1,_snake[0][1])!=CellContent.SNAKE)
-                    {
-                        _sneakDirection = SnakeDirection.RIGHT;
-                    }
-                    break;
-                case Keys.A:
-                    if (GetCellContent(_snake[0][0] - 1, _snake[0][1]) != CellContent.SNAKE)
-                    {
-                        _sneakDirection = SnakeDirection.LEFT;
-                    }
-                    break;
-                case Keys.S:
-                    if (GetCellContent(_snake[0][0], _snake[0][1]+1) != CellContent.SNAKE)
-                    {
-                        _sneakDirection = SnakeDirection.DOWN;
-                    }
-                    break;
-                case Keys.W:
-                    if (GetCellContent(_snake[0][0], _snake[0][1]-1) != CellContent.SNAKE)
-                    {
-                        _sneakDirection = SnakeDirection.UP;
-                    }
-                    break;
-                default:
-                    break;
-            }
-        }
+        Grid[snakeHead.X, snakeHead.Y] = Content.Snake;
+    }
 
+    public void Input(KeyEventArgs e)
+    {
+        switch (e.KeyCode)
+        {
+            case Keys.D:
+                if (CellContent(snakeHead.X + 1, snakeHead.Y) != Content.Snake)
+                    snakeDirection = SnakeDirection.Right;
+                break;
+            case Keys.A:
+                if (CellContent(snakeHead.X - 1, snakeHead.Y) != Content.Snake)
+                    snakeDirection = SnakeDirection.Left;
+                break;
+            case Keys.S:
+                if (CellContent(snakeHead.X, snakeHead.Y + 1) != Content.Snake)
+                    snakeDirection = SnakeDirection.Down;
+                break;
+            case Keys.W:
+                if (CellContent(snakeHead.X, snakeHead.Y - 1) != Content.Snake)
+                    snakeDirection = SnakeDirection.Up;
+                break;
+        }
     }
 }

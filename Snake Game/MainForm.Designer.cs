@@ -53,7 +53,7 @@
             // mainTimer
             // 
             this.mainTimer.Enabled = true;
-            this.mainTimer.Interval = 10;
+            this.mainTimer.Interval = 200;
             this.mainTimer.Tick += new System.EventHandler(this.mainTimer_Tick);
             // 
             // lableSneak
