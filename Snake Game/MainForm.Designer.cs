@@ -53,7 +53,6 @@
             // mainTimer
             // 
             this.mainTimer.Enabled = true;
-            this.mainTimer.Interval = 200;
             this.mainTimer.Tick += new System.EventHandler(this.mainTimer_Tick);
             // 
             // lableSneak
@@ -99,6 +98,5 @@
         private System.Windows.Forms.Timer mainTimer;
         private Label lableSneak;
         private Label labelSnakeCount;
-
     }
 }
