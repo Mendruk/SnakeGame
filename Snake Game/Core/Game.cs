@@ -2,39 +2,32 @@
 
 public class Game
 {
-    public enum Content
+    private readonly Dictionary<Content, Brush> contentBrushes = new()
     {
-        Empty,
-        Snake,
-        Food,
-        Block
-    }
+        { Content.Block, Brushes.Black },
+        { Content.Snake, Brushes.Green },
+        { Content.Food, Brushes.Orange }
+    };
 
-    public enum SnakeDirection
-    {
-        Stop,
-        Left,
-        Right,
-        Up,
-        Down
-    }
-
+    private readonly int fieldSize = 15;
     private readonly int height;
-    private readonly Random rnd = new();
     private readonly int width;
-    private List<Point> snake;
+    private readonly Random random = new();
+    private int cellSizeHeight;
+    private int cellSizeWidth;
+    private Queue<Point> snake;
+    private Point snakeHead;
     private SnakeDirection snakeDirection;
 
-    public Game(int width, int height)
+    public Game(int gameFieldHeight, int gameFieldWidth)
     {
-        this.width = width;
-        this.height = height;
-        Grid = new Content[this.width, this.height];
+        width = fieldSize;
+        height = fieldSize;
+        cellSizeHeight = gameFieldHeight / fieldSize;
+        cellSizeWidth = gameFieldWidth / fieldSize;
+        Grid = new Content[width, height];
         Start();
     }
-
-    private Point snakeHead => snake[snake.Count - 1];
-    private Point snakeTail => snake[0];
 
     public Content[,] Grid { get; }
     public int snakeLength => snake.Count;
@@ -49,14 +42,85 @@ public class Game
     private void Start()
     {
         Array.Clear(Grid, 0, Grid.Length);
-
-        snake = new List<Point> { new(rnd.Next(width), rnd.Next(height)) };
+        snake = new Queue<Point>();
+        snakeHead = new Point(random.Next(width), random.Next(height));
+        snake.Enqueue(snakeHead);
         Grid[snakeHead.X, snakeHead.Y] = Content.Snake;
-        AddItem(Content.Food);
+        AddContentToRandomPosition(Content.Food);
         snakeDirection = SnakeDirection.Stop;
     }
 
-    private Point SnakeNextPoint(SnakeDirection direction)
+    public void Input(SnakeDirection direction)
+    {
+        switch (direction)
+        {
+            case SnakeDirection.Right:
+                if (CellContent(snakeHead.X + 1, snakeHead.Y) != Content.Snake)
+                    snakeDirection = direction;
+                break;
+            case SnakeDirection.Left:
+                if (CellContent(snakeHead.X - 1, snakeHead.Y) != Content.Snake)
+                    snakeDirection = direction;
+                break;
+            case SnakeDirection.Down:
+                if (CellContent(snakeHead.X, snakeHead.Y + 1) != Content.Snake)
+                    snakeDirection = direction;
+                break;
+            case SnakeDirection.Up:
+                if (CellContent(snakeHead.X, snakeHead.Y - 1) != Content.Snake)
+                    snakeDirection = direction;
+                break;
+        }
+    }
+
+    public void Update()
+    {
+        var snakeNextPoint = GetSnakeNextPoint(snakeDirection);
+
+        switch (CellContent(snakeNextPoint.X, snakeNextPoint.Y))
+        {
+            case Content.Food:
+                snakeHead = snakeNextPoint;
+                snake.Enqueue(snakeHead);
+                AddContentToRandomPosition(Content.Food);
+                AddContentToRandomPosition(Content.Block);
+                break;
+            case Content.Snake:
+                if (snakeDirection != SnakeDirection.Stop)
+                {
+                    snakeDirection = SnakeDirection.Stop;
+                    ShowFailMessage();
+                }
+
+                break;
+            case Content.Block:
+                if (snakeDirection != SnakeDirection.Stop)
+                {
+                    snakeDirection = SnakeDirection.Stop;
+                    ShowFailMessage();
+                }
+
+                break;
+            case Content.Empty:
+                snakeHead = snakeNextPoint;
+                snake.Enqueue(snakeHead);
+                Grid[snake.Peek().X, snake.Peek().Y] = Content.Empty;
+                snake.Dequeue();
+                break;
+        }
+
+        Grid[snakeHead.X, snakeHead.Y] = Content.Snake;
+    }
+
+    public void Draw(Graphics graphics)
+    {
+        for (var x = 0; x < fieldSize; x++)
+            for (var y = 0; y < fieldSize; y++)
+                if (contentBrushes.TryGetValue(Grid[x, y], out var brush))
+                    graphics.FillRectangle(brush, x * cellSizeWidth, y * cellSizeHeight, cellSizeWidth, cellSizeHeight);
+    }
+
+    private Point GetSnakeNextPoint(SnakeDirection direction)
     {
         var nextPoint = new Point(snakeHead.X, snakeHead.Y);
 
@@ -81,23 +145,20 @@ public class Game
         return nextPoint;
     }
 
-    private void AddItem(Content content)
+    private void AddContentToRandomPosition(Content content)
     {
-        var freeCells = new List<Point>();
-        for (var i = 0; i < width; i++)
-        for (var j = 0; j < height; j++)
-            if (Grid[i, j] == Content.Empty)
-                freeCells.Add(new Point(i, j));
+        var offsetX = random.Next(width);
+        var offsetY = random.Next(height);
 
-        if (freeCells.Count > 0)
-        {
-            var randomIndex = rnd.Next(freeCells.Count - 1);
-            Grid[freeCells[randomIndex].X, freeCells[randomIndex].Y] = content;
-        }
-        else
-        {
-            Start();
-        }
+        for (var x = 0; x < width; x++)
+            for (var y = 0; y < height; y++)
+                if (Grid[(x + offsetX) % width, (y + offsetY) % height] == Content.Empty)
+                {
+                    Grid[(x + offsetX) % width, (y + offsetY) % height] = content;
+                    goto CyclesEnd;
+                }
+
+            CyclesEnd:;
     }
 
     private void ShowFailMessage()
@@ -107,63 +168,26 @@ public class Game
         if (result == DialogResult.No) ShowFailMessage();
     }
 
-    public void Update()
+    public void ChangeСellSize(int gameFieldHeight, int gameFieldWidth)
     {
-        var snakeNextPoint = SnakeNextPoint(snakeDirection);
-
-        switch (CellContent(snakeNextPoint.X, snakeNextPoint.Y))
-        {
-            case Content.Food:
-                snake.Add(snakeNextPoint);
-                AddItem(Content.Food);
-                AddItem(Content.Block);
-                break;
-            case Content.Snake:
-                if (snakeDirection != SnakeDirection.Stop)
-                {
-                    snakeDirection = SnakeDirection.Stop;
-                    ShowFailMessage();
-                }
-
-                break;
-            case Content.Block:
-                if (snakeDirection != SnakeDirection.Stop)
-                {
-                    snakeDirection = SnakeDirection.Stop;
-                    ShowFailMessage();
-                }
-
-                break;
-            default:
-                snake.Add(snakeNextPoint);
-                Grid[snakeTail.X, snakeTail.Y] = Content.Empty;
-                snake.RemoveAt(0);
-                break;
-        }
-
-        Grid[snakeHead.X, snakeHead.Y] = Content.Snake;
+        cellSizeHeight = gameFieldHeight / fieldSize;
+        cellSizeWidth = gameFieldWidth / fieldSize;
     }
+}
 
-    public void Input(KeyEventArgs e)
-    {
-        switch (e.KeyCode)
-        {
-            case Keys.D:
-                if (CellContent(snakeHead.X + 1, snakeHead.Y) != Content.Snake)
-                    snakeDirection = SnakeDirection.Right;
-                break;
-            case Keys.A:
-                if (CellContent(snakeHead.X - 1, snakeHead.Y) != Content.Snake)
-                    snakeDirection = SnakeDirection.Left;
-                break;
-            case Keys.S:
-                if (CellContent(snakeHead.X, snakeHead.Y + 1) != Content.Snake)
-                    snakeDirection = SnakeDirection.Down;
-                break;
-            case Keys.W:
-                if (CellContent(snakeHead.X, snakeHead.Y - 1) != Content.Snake)
-                    snakeDirection = SnakeDirection.Up;
-                break;
-        }
-    }
+public enum Content
+{
+    Empty,
+    Snake,
+    Food,
+    Block
+}
+
+public enum SnakeDirection
+{
+    Stop,
+    Left,
+    Right,
+    Up,
+    Down
 }
