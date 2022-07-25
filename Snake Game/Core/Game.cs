@@ -9,43 +9,40 @@ public class Game
         { Content.Food, Brushes.Orange }
     };
 
-    private readonly int fieldSize = 15;
-    private readonly int height;
-    private readonly int width;
+    private readonly int heightInCells;
+    private readonly int widthInCells;
     private readonly Random random = new();
     private int cellSizeHeight;
     private int cellSizeWidth;
     private Queue<Point> snake;
     private Point snakeHead;
     private SnakeDirection snakeDirection;
+    private Content[,] grid;
 
-    public Game(int gameFieldHeight, int gameFieldWidth)
+    public Game()
     {
-        width = fieldSize;
-        height = fieldSize;
-        cellSizeHeight = gameFieldHeight / fieldSize;
-        cellSizeWidth = gameFieldWidth / fieldSize;
-        Grid = new Content[width, height];
+        widthInCells = 15;
+        heightInCells = 15;
+        grid = new Content[widthInCells, heightInCells];
         Start();
     }
 
-    public Content[,] Grid { get; }
-    public int snakeLength => snake.Count;
+    public int SnakeLength => snake.Count;
 
-    private Content CellContent(int x, int y)
+    private Content GetCellContent(int x, int y)
     {
-        x = (x + width) % width;
-        y = (y + height) % height;
-        return Grid[x, y];
+        x = (x + widthInCells) % widthInCells;
+        y = (y + heightInCells) % heightInCells;
+        return grid[x, y];
     }
 
     private void Start()
     {
-        Array.Clear(Grid, 0, Grid.Length);
+        Array.Clear(grid, 0, grid.Length);
         snake = new Queue<Point>();
-        snakeHead = new Point(random.Next(width), random.Next(height));
+        snakeHead = new Point(random.Next(widthInCells), random.Next(heightInCells));
         snake.Enqueue(snakeHead);
-        Grid[snakeHead.X, snakeHead.Y] = Content.Snake;
+        grid[snakeHead.X, snakeHead.Y] = Content.Snake;
         AddContentToRandomPosition(Content.Food);
         snakeDirection = SnakeDirection.Stop;
     }
@@ -55,19 +52,19 @@ public class Game
         switch (direction)
         {
             case SnakeDirection.Right:
-                if (CellContent(snakeHead.X + 1, snakeHead.Y) != Content.Snake)
+                if (snakeDirection != SnakeDirection.Left || snake.Count == 1)
                     snakeDirection = direction;
                 break;
             case SnakeDirection.Left:
-                if (CellContent(snakeHead.X - 1, snakeHead.Y) != Content.Snake)
+                if (snakeDirection != SnakeDirection.Right || snake.Count == 1)
                     snakeDirection = direction;
                 break;
             case SnakeDirection.Down:
-                if (CellContent(snakeHead.X, snakeHead.Y + 1) != Content.Snake)
+                if (snakeDirection != SnakeDirection.Up || snake.Count == 1)
                     snakeDirection = direction;
                 break;
             case SnakeDirection.Up:
-                if (CellContent(snakeHead.X, snakeHead.Y - 1) != Content.Snake)
+                if (snakeDirection != SnakeDirection.Down || snake.Count == 1)
                     snakeDirection = direction;
                 break;
         }
@@ -75,10 +72,19 @@ public class Game
 
     public void Update()
     {
-        var snakeNextPoint = GetSnakeNextPoint(snakeDirection);
+        Point snakeNextPoint = GetSnakeNextPoint(snakeDirection);
 
-        switch (CellContent(snakeNextPoint.X, snakeNextPoint.Y))
+        if (snakeDirection == SnakeDirection.Stop)
+            return;
+
+        switch (GetCellContent(snakeNextPoint.X, snakeNextPoint.Y))
         {
+            case Content.Empty:
+                snakeHead = snakeNextPoint;
+                snake.Enqueue(snakeHead);
+                Point desappearedTail = snake.Dequeue();
+                grid[desappearedTail.X, desappearedTail.Y] = Content.Empty;
+                break;
             case Content.Food:
                 snakeHead = snakeNextPoint;
                 snake.Enqueue(snakeHead);
@@ -86,37 +92,23 @@ public class Game
                 AddContentToRandomPosition(Content.Block);
                 break;
             case Content.Snake:
-                if (snakeDirection != SnakeDirection.Stop)
-                {
-                    snakeDirection = SnakeDirection.Stop;
-                    ShowFailMessage();
-                }
-
-                break;
             case Content.Block:
                 if (snakeDirection != SnakeDirection.Stop)
                 {
                     snakeDirection = SnakeDirection.Stop;
                     ShowFailMessage();
                 }
-
-                break;
-            case Content.Empty:
-                snakeHead = snakeNextPoint;
-                snake.Enqueue(snakeHead);
-                Grid[snake.Peek().X, snake.Peek().Y] = Content.Empty;
-                snake.Dequeue();
                 break;
         }
 
-        Grid[snakeHead.X, snakeHead.Y] = Content.Snake;
+        grid[snakeHead.X, snakeHead.Y] = Content.Snake;
     }
 
     public void Draw(Graphics graphics)
     {
-        for (var x = 0; x < fieldSize; x++)
-            for (var y = 0; y < fieldSize; y++)
-                if (contentBrushes.TryGetValue(Grid[x, y], out var brush))
+        for (int x = 0; x < widthInCells; x++)
+            for (int y = 0; y < heightInCells; y++)
+                if (contentBrushes.TryGetValue(grid[x, y], out var brush))
                     graphics.FillRectangle(brush, x * cellSizeWidth, y * cellSizeHeight, cellSizeWidth, cellSizeHeight);
     }
 
@@ -140,22 +132,27 @@ public class Game
                 break;
         }
 
-        nextPoint.X = (nextPoint.X + width) % width;
-        nextPoint.Y = (nextPoint.Y + height) % height;
+        nextPoint.X = (nextPoint.X + widthInCells) % widthInCells;
+        nextPoint.Y = (nextPoint.Y + heightInCells) % heightInCells;
         return nextPoint;
     }
 
     private void AddContentToRandomPosition(Content content)
     {
-        var offsetX = random.Next(width);
-        var offsetY = random.Next(height);
+        int offsetX = random.Next(widthInCells);
+        int offsetY = random.Next(heightInCells);
 
-        for (var x = 0; x < width; x++)
-            for (var y = 0; y < height; y++)
-                if (Grid[(x + offsetX) % width, (y + offsetY) % height] == Content.Empty)
+        for (int x = 0; x < widthInCells; x++)
+            for (int y = 0; y < heightInCells; y++)
+                if (grid[(x + offsetX) % widthInCells, (y + offsetY) % heightInCells] == Content.Empty)
                 {
+<<<<<<< Updated upstream
                     Grid[(x + offsetX) % width, (y + offsetY) % height] = content;
                     goto CyclesEnd;
+=======
+                    grid[(x + offsetX) % widthInCells, (y + offsetY) % heightInCells] = content;
+                    return;
+>>>>>>> Stashed changes
                 }
 
             CyclesEnd:;
@@ -163,15 +160,15 @@ public class Game
 
     private void ShowFailMessage()
     {
-        var result = MessageBox.Show("Game Over! Restart?", "Game Over", MessageBoxButtons.YesNo);
+        DialogResult result = MessageBox.Show("Game Over! Restart?", "Game Over", MessageBoxButtons.YesNo);
         if (result == DialogResult.Yes) Start();
         if (result == DialogResult.No) ShowFailMessage();
     }
 
-    public void ChangeСellSize(int gameFieldHeight, int gameFieldWidth)
+    public void ChangeCellSize(int gameFieldHeight, int gameFieldWidth)
     {
-        cellSizeHeight = gameFieldHeight / fieldSize;
-        cellSizeWidth = gameFieldWidth / fieldSize;
+        cellSizeHeight = gameFieldHeight / heightInCells;
+        cellSizeWidth = gameFieldWidth / widthInCells;
     }
 }
 
