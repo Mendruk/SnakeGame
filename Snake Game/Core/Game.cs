@@ -155,10 +155,8 @@ public class Game
                 if (Grid[(x + offsetX) % width, (y + offsetY) % height] == Content.Empty)
                 {
                     Grid[(x + offsetX) % width, (y + offsetY) % height] = content;
-                    goto CyclesEnd;
+                    return;
                 }
-
-            CyclesEnd:;
     }
 
     private void ShowFailMessage()
