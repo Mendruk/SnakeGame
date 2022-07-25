@@ -146,16 +146,9 @@ public class Game
             for (int y = 0; y < heightInCells; y++)
                 if (grid[(x + offsetX) % widthInCells, (y + offsetY) % heightInCells] == Content.Empty)
                 {
-<<<<<<< Updated upstream
-                    Grid[(x + offsetX) % width, (y + offsetY) % height] = content;
-                    goto CyclesEnd;
-=======
                     grid[(x + offsetX) % widthInCells, (y + offsetY) % heightInCells] = content;
                     return;
->>>>>>> Stashed changes
                 }
-
-            CyclesEnd:;
     }
 
     private void ShowFailMessage()
