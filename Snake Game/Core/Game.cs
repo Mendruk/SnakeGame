@@ -147,7 +147,6 @@ public class Game
                 if (grid[(x + offsetX) % widthInCells, (y + offsetY) % heightInCells] == Content.Empty)
                 {
                     grid[(x + offsetX) % widthInCells, (y + offsetY) % heightInCells] = content;
-                    return;
                 }
     }
 
