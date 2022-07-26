@@ -12,7 +12,8 @@ namespace Snake_Game
                 ControlStyles.AllPaintingInWmPaint |
                 ControlStyles.UserPaint, true);
             UpdateStyles();
-            game = new Game(picGameField.Height, picGameField.Width);
+            game = new Game();
+            game?.ChangeCellSize(picGameField.Height, picGameField.Width);
         }
         private void picGameField_Paint(object sender, PaintEventArgs e)
         {
@@ -21,7 +22,7 @@ namespace Snake_Game
         private void mainTimer_Tick(object sender, EventArgs e)
         {
             game.Update();
-            labelSnakeCount.Text = game.snakeLength.ToString();
+            labelSnakeCount.Text = game.SnakeLength.ToString();
             Refresh();
 
         }
@@ -45,7 +46,7 @@ namespace Snake_Game
         }
         private void picGameField_SizeChanged(object sender, EventArgs e)
         {
-            game.Change—ellSize(picGameField.Height, picGameField.Width);
+            game?.ChangeCellSize(picGameField.Height, picGameField.Width);
             Refresh();
         }
     }
