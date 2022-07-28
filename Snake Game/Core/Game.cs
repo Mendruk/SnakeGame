@@ -72,10 +72,9 @@ public class Game
 
     public void Update()
     {
-        Point snakeNextPoint = GetSnakeNextPoint(snakeDirection);
-
         if (snakeDirection == SnakeDirection.Stop)
             return;
+        Point snakeNextPoint = GetSnakeNextPoint(snakeDirection);
 
         switch (GetCellContent(snakeNextPoint.X, snakeNextPoint.Y))
         {
@@ -147,6 +146,7 @@ public class Game
                 if (grid[(x + offsetX) % widthInCells, (y + offsetY) % heightInCells] == Content.Empty)
                 {
                     grid[(x + offsetX) % widthInCells, (y + offsetY) % heightInCells] = content;
+                    return;
                 }
     }
 
